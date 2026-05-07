@@ -1,2 +1,11 @@
-# Locating-Rogue-Unwanted-Processes-Running-on-Windows-
+# Locating Rogue Unwanted Processes Running on Windows
 Locating Rogue/Unwanted Processes Running on Windows Using PowerShell and Mitigating Them with Layer 3 Allow/Block Applications Like Windows Defender
+An investigation was launched to detect and eliminate rogue processes — cryptominers, keyloggers, persistence mechanisms — running on a Windows 10/11 endpoint fleet. Using PowerShell, a detection script was developed that enumerates all running processes (Get-Process), cross-references them against an allowlist of known-good executables (signed by Microsoft, Adobe, or internal IT), and flags anomalies such as unsigned processes launched from %TEMP%, processes with mismatched original filenames, and high CPU/network consumption. The script also checks for hidden processes using WMI queries and watches for process injection via Get-Process | Get-Module.
+
+Paragraph 2: Once a rogue process was confirmed (e.g., svchost.exe running from C:\Users\Public), mitigation was enforced at Layer 3 (network layer) using Windows Defender Firewall with advanced security — creating deny rules for the specific executable’s outbound traffic to all remote ports and IP addresses. For recurring threats, Windows Defender Antivirus was configured via Set-MpPreference to block the file hash globally and enable cloud-delivered protection (MAPS). The solution reduced incident response time from hours to under five minutes per compromised endpoint and generated daily reports of blocked processes.
+
+- Wrote PowerShell script Find-RogueProcess.ps1 that compares Get-Process output to a CSV allowlist; flags processes with no VerifiedSigner.
+- Detected a rogue powershell.exe child process of winword.exe (macro downloader) using Get-CimInstance Win32_Process | Where-Object ParentProcessId.
+- Created outbound block rule via New-NetFirewallRule -DisplayName "Block Rogue Hash" -Direction Outbound -Program "C:\bad.exe" -Action Block.
+- Used Add-MpPreference -ExclusionProcess "bad.exe" temporarily reversed; then Set-MpPreference -DisableRealtimeMonitoring $false after cleanup to re-enforce Defender.
+- Scheduled the detection script to run every 15 minutes as a scheduled task, emailing alerts when rogue processes persisted across three consecutive scans.
